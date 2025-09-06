@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RecipeFinder — Ingredients → Recipes & Nutrition</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div class="brand">🍲 RecipeFinder</div>
+      <div class="subtitle">Type ingredients → get recipes + nutrition breakdown</div>
+    </header>
+
+    <section class="controls card">
+      <label>Paste your Spoonacular API Key (keeps in local storage for this browser)</label>
+      <input id="apiKey" placeholder="Spoonacular API Key" />
+      <div class="row">
+        <input id="ingredients" placeholder="Enter ingredients, separated by commas (eg. tomato, onion, rice)" />
+        <button id="searchBtn">Search Recipes</button>
+      </div>
+      <div class="small muted">If you don't have a key: register at https://spoonacular.com/food-api</div>
+    </section>
+
+    <section class="results-grid">
+      <div class="card" id="resultsPanel">
+        <h3>Results</h3>
+        <div id="results">Search for recipes to see results here.</div>
+      </div>
+
+      <div class="card" id="detailPanel">
+        <h3>Recipe & Nutrition</h3>
+        <div id="detail">Select a recipe to view details and nutrition.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Favorites</h3>
+      <div id="favorites">No favorites yet.</div>
+      <button id="clearFavs" class="danger">Clear Favorites</button>
+    </section>
+
+    <footer class="muted">Built with Spoonacular API (client-side demo). For production, proxy keys server-side.</footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
