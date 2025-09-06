@@ -1,6 +1,5 @@
 // RecipeFinder app.js
 // client-side demo using Spoonacular API
-// user places their API key into the input (stored to localStorage for convenience)
 
 const apiKeyInput = document.getElementById('apiKey');
 const ingInput = document.getElementById('ingredients');
@@ -9,6 +8,9 @@ const resultsDiv = document.getElementById('results');
 const detailDiv = document.getElementById('detail');
 const favoritesDiv = document.getElementById('favorites');
 const clearFavsBtn = document.getElementById('clearFavs');
+
+// new: strict filter checkbox
+let strictFilter = false;
 
 const LS_KEY = 'rf_favorites_v1';
 const LS_APIKEY = 'rf_spoonacular_key';
@@ -23,18 +25,25 @@ function setApiKey(k){ localStorage.setItem(LS_APIKEY, k); apiKeyInput.value = k
 function getApiKey(){ return (apiKeyInput.value || '').trim(); }
 function showError(msg){ detailDiv.innerHTML = `<div style="color:#b91c1c">${msg}</div>`; }
 function formatNumber(n){ return Math.round(n); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
 
 // render favorites
 function renderFavorites(){
-  if(!favorites.length){ favoritesDiv.innerHTML = '<div class="muted">No favorites yet.</div>'; return; }
+  if(!favorites.length){
+    favoritesDiv.innerHTML = '<div class="muted">No favorites yet.</div>';
+    return;
+  }
   favoritesDiv.innerHTML = favorites.map((r,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
       <div><strong>${escapeHtml(r.title)}</strong><div class="small muted">${escapeHtml(r.sourceName||'')}</div></div>
-      <div><button onclick="playFav(${i})">View</button> <button onclick="removeFav(${i})" class="danger">Remove</button></div>
+      <div>
+        <button onclick="viewFav(${i})">View</button>
+        <button onclick="removeFav(${i})" class="danger">Remove</button>
+      </div>
     </div>
   `).join('');
 }
-window.playFav = function(i){
+window.viewFav = function(i){
   const r = favorites[i];
   if(!r) return;
   fetchRecipeInformation(r.id);
@@ -45,9 +54,6 @@ window.removeFav = function(i){
   renderFavorites();
 }
 
-// basic escape
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
-
 // search by ingredients
 searchBtn.addEventListener('click', async ()=>{
   const key = getApiKey();
@@ -56,15 +62,28 @@ searchBtn.addEventListener('click', async ()=>{
   const raw = (ingInput.value || '').trim();
   if(!raw){ alert('Please enter at least one ingredient.'); return; }
   resultsDiv.innerHTML = '<div class="small muted">Searching…</div>';
-  const ingredients = raw.split(',').map(s=>s.trim()).filter(Boolean).join(',');
-  // spoonacular endpoint - findByIngredients
-  const url = `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${encodeURIComponent(ingredients)}&number=12&ranking=1&ignorePantry=true&apiKey=${encodeURIComponent(key)}`;
+  const ingredients = raw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const query = ingredients.join(',');
+  const url = `https://api.spoonacular.com/recipes/findByIngredients?ingredients=${encodeURIComponent(query)}&number=20&ranking=2&ignorePantry=true&apiKey=${encodeURIComponent(key)}`;
   try{
     const res = await fetch(url);
     if(!res.ok){ const txt = await res.text(); throw new Error(txt || res.statusText); }
     const data = await res.json();
     if(!data || !data.length){ resultsDiv.innerHTML = '<div class="muted">No recipes found.</div>'; return; }
-    renderResults(data);
+
+    let filtered = data;
+    if(strictFilter){
+      filtered = data.filter(r=>{
+        const used = (r.usedIngredients||[]).map(i=>i.name.toLowerCase());
+        return ingredients.every(ing => used.includes(ing));
+      });
+    }
+
+    if(!filtered.length){
+      resultsDiv.innerHTML = '<div class="muted">No strict matches found.</div>';
+    } else {
+      renderResults(filtered);
+    }
   }catch(err){
     console.error(err); showError('Search failed: ' + (err.message || err)); resultsDiv.innerHTML = '';
   }
@@ -84,7 +103,7 @@ function renderResults(list){
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <button onclick="fetchRecipeInformation(${r.id})">View</button>
-        <button onclick="addToFavorites(${encodeURIComponent(JSON.stringify({id:r.id,title:r.title,sourceName:r.sourceName||''}))})" class="fav-btn">♥ Fav</button>
+        <button onclick='addToFavorites(${JSON.stringify({id:r.id,title:r.title,sourceName:r.sourceName||""})})' class="fav-btn">♥ Fav</button>
       </div>
     </div>
   `).join('');
@@ -109,11 +128,10 @@ async function fetchRecipeInformation(id){
 // render detailed recipe + nutrition breakdown
 function renderDetail(data){
   const nutr = data.nutrition && data.nutrition.nutrients ? data.nutrition.nutrients : [];
-  // find common nutrients
-  const cal = nutr.find(n=>/calorie/i.test(n.name) || n.name.toLowerCase()==='calories') || {amount:0,unit:'kcal'};
+  const cal = nutr.find(n=>/calorie/i.test(n.name)) || {amount:0,unit:'kcal'};
   const protein = nutr.find(n=>/protein/i.test(n.name)) || {amount:0,unit:'g'};
   const carbs = nutr.find(n=>/carbohydrate/i.test(n.name)) || {amount:0,unit:'g'};
-  const fat = nutr.find(n=>/fat/i.test(n.name)) || {amount:0,unit:'g'};
+  const fat = nutr.find(n=>/^fat$/i.test(n.name)) || {amount:0,unit:'g'};
 
   detailDiv.innerHTML = `
     <div style="display:flex;gap:12px;align-items:center">
@@ -122,7 +140,7 @@ function renderDetail(data){
         <div style="font-weight:800">${escapeHtml(data.title)}</div>
         <div class="small muted">${escapeHtml(data.sourceName||'')}</div>
         <div style="margin-top:8px">
-          <button onclick="addFavByObject(${encodeURIComponent(JSON.stringify({id:data.id,title:data.title,sourceName:data.sourceName||''}))})">Add to Favorites</button>
+          <button onclick='addToFavorites(${JSON.stringify({id:data.id,title:data.title,sourceName:data.sourceName||""})})'>Add to Favorites</button>
           <a href="${escapeHtml(data.sourceUrl||'')}" target="_blank" style="margin-left:8px" class="small">Open source</a>
         </div>
       </div>
@@ -151,25 +169,24 @@ function renderDetail(data){
 }
 
 // favorites helpers
-function addToFavorites(encoded){
-  try{
-    const obj = JSON.parse(decodeURIComponent(encoded));
-    favorites.unshift(obj);
+function addToFavorites(recipe){
+  if(favorites.find(f => f.id === recipe.id)) {
+    alert('Already in favorites');
+    return;
+  }
+  favorites.unshift(recipe);
+  localStorage.setItem(LS_KEY, JSON.stringify(favorites));
+  renderFavorites();
+  alert('Added to favorites');
+}
+
+clearFavsBtn.addEventListener('click', ()=>{
+  if(confirm('Clear all favorites?')){
+    favorites=[];
     localStorage.setItem(LS_KEY, JSON.stringify(favorites));
     renderFavorites();
-    alert('Added to favorites');
-  }catch(e){ console.error(e) }
-}
-function addFavByObject(encoded){
-  try{
-    const obj = JSON.parse(decodeURIComponent(encoded));
-    favorites.unshift(obj);
-    localStorage.setItem(LS_KEY, JSON.stringify(favorites));
-    renderFavorites();
-    alert('Added to favorites');
-  }catch(e){ console.error(e) }
-}
-clearFavsBtn.addEventListener('click', ()=>{ if(confirm('Clear all favorites?')){ favorites=[]; localStorage.setItem(LS_KEY, JSON.stringify(favorites)); renderFavorites(); } });
+  }
+});
 
 // load saved favorites on startup
 renderFavorites();
@@ -177,3 +194,12 @@ renderFavorites();
 // allow pressing Enter to search
 ingInput.addEventListener('keydown', e=>{ if(e.key==='Enter') searchBtn.click(); });
 apiKeyInput.addEventListener('change', ()=> setApiKey(apiKeyInput.value) );
+
+// new: strict filter toggle
+const strictBox = document.createElement('label');
+strictBox.innerHTML = `<input type="checkbox" id="strictCheck"/> Strict filter (all ingredients must be included)`;
+document.querySelector('.controls').appendChild(strictBox);
+
+document.getElementById('strictCheck').addEventListener('change', e=>{
+  strictFilter = e.target.checked;
+});
