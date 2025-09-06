@@ -1,0 +1,23 @@
+:root{--bg:#f7fafc;--card:#ffffff;--accent:#ff7b54;--muted:#6b7280}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:#0f172a}
+.container{max-width:980px;margin:28px auto;padding:16px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.brand{font-size:20px;font-weight:800;background:linear-gradient(90deg,var(--accent),#ffb86b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.subtitle{color:var(--muted);font-size:14px}
+.card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 8px 18px rgba(2,6,23,0.06);margin-bottom:12px}
+.controls input, .controls .row input{padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;width:100%}
+.controls .row{display:flex;gap:8px;margin-top:8px}
+.controls button{background:var(--accent);color:white;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+.results-grid{display:grid;grid-template-columns:1fr 420px;gap:12px}
+.recipe{display:flex;gap:10px;align-items:center;padding:10px;border-radius:8px;border:1px solid #f1f3f8;margin-bottom:8px}
+.recipe .meta{flex:1}
+.recipe button{background:#06b6d4;border:0;color:white;padding:8px 10px;border-radius:8px;cursor:pointer}
+.small{font-size:13px}
+.muted{color:var(--muted)}
+.badge{background:#f1f5f9;padding:4px 8px;border-radius:999px;font-size:13px}
+.nutrition{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.nut-card{background:#fbfbff;padding:8px;border-radius:8px;border:1px solid #eef2ff;min-width:100px;text-align:center}
+.fav-btn{background:#ffdede;border:0;padding:6px 8px;border-radius:8px;cursor:pointer}
+.danger{background:#ef4444;color:white;border:0;padding:8px 10px;border-radius:8px}
+@media(max-width:900px){ .results-grid{grid-template-columns:1fr} }
